@@ -1,0 +1,142 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_CONECTION_STRING")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum Roles {
+  ADMIN
+  CUSTOMER
+  STYLIST
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELED
+}
+
+enum Rank {
+  SILVER
+  BRONZE
+  GOLD
+  DIAMON
+}
+
+model User {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  gender           Gender    @default(MALE)
+  role             Roles     @default(CUSTOMER)
+  full_name        String
+  phone_number     String // @unique
+  password         String?
+  avatar           String?
+  date_of_birth    DateTime?
+  address          String?
+  access_token     String?
+  refresh_token    String?
+  deleted          Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  profile          Profile?
+  notify_token     String?
+  // is_password_set    Boolean @default(false)
+  customerBookings Booking[] @relation("CustomerBooking")
+  stylistBookings  Booking[] @relation("StylistBooking")
+}
+
+type Profile {
+  customer CustomerProfile? // Embedded Customer profile
+  stylist  StylistProfile? // Embedded Stylist profile
+  // adminProfile    AdminProfile?     // Embedded Admin profile
+}
+
+type CustomerProfile {
+  rank    Rank @default(BRONZE)
+  rewards Int  @default(0)
+}
+
+type StylistProfile {
+  experience String  @default("1 năm")
+  reviews    Int     @default(0)
+  isWorking  Boolean @default(true)
+}
+
+model Service {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   @unique
+  price       String
+  description String
+  picture     String?
+  time        Int?     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deleted     Boolean  @default(false)
+}
+
+model Combo {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String    @unique
+  description String
+  price       String?
+  picture     String?
+  services    String[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deleted     Boolean   @default(false)
+  Booking     Booking[]
+  point       Int?      @default(0)
+  total_time  Int?      @default(0)
+}
+
+model Banner {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String   @unique
+  banner    String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deleted   Boolean  @default(false)
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELED
+  COMPLETED
+}
+
+model Booking {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  customer_id String        @db.ObjectId
+  stylist_id  String        @db.ObjectId
+  combo_id    String?       @db.ObjectId
+  start_time  DateTime
+  end_time    DateTime
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deleted     Boolean       @default(false)
+
+  payment_status PaymentStatus @default(PENDING)
+
+  customer User   @relation("CustomerBooking", fields: [customer_id], references: [id])
+  stylist  User   @relation("StylistBooking", fields: [stylist_id], references: [id])
+  combo    Combo? @relation(fields: [combo_id], references: [id])
+
+  @@index([combo_id, customer_id, stylist_id, status])
+}
